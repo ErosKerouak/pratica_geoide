@@ -1,0 +1,339 @@
+
+
+\chapter{Introdução}
+
+\vspace{-16pt}
+
+O campo de gravidade da Terra fornece a base física para transformar alturas geométricas em alturas físicas e, com isso, integrar posicionamento GNSS ao nivelamento clássico. Essa integração depende de modelos confiáveis do geoide, cuja acurácia regional condiciona aplicações em engenharia, cartografia e monitoramento geodinâmico. Em escala continental, modelos satelitais do geopotencial descrevem bem os comprimentos de onda longos; em escala local, os dados terrestres resolvem feições curtas e heterogêneas. O desafio surge na junção dessas escalas: combinar medições irregulares, ruidosas e afetadas pela topografia com a informação espectral dos modelos globais, de modo estatística e fisicamente consistente. Para enfrentar esse desafio, adota-se uma estratégia em duas frentes e um ponto de encontro. Na frente espectral, remove-se do sinal observado a contribuição de um modelo global do geopotencial, reduzindo a variância de \emph{background} e isolando as componentes residuais relevantes à área de estudo. Na frente espacial, modela-se a dependência entre observações por uma função de covariância adequada e aplica-se Colocação por Mínimos Quadrados (LSC) para interpolar o sinal residual em grade regular, controlando ruído e bordas. O ponto de encontro ocorre na integração geodésica: a função de Stokes, na forma modificada compatível com a remoção espectral, converte anomalias residuais de gravidade em ondulação residual do geoide, à qual se agrega a contribuição indireta da topografia (efeito indireto) para obter superfícies fisicamente interpretáveis.
+
+Neste trabalho, segue-se essa arquitetura de solução com escolhas explícitas e verificáveis: (i) definem-se anomalias residuais de Helmert a partir de dados terrestres, após subtração da contribuição de um modelo geopotencial de referência (GOCO06s, até grau $300$) e do efeito indireto de Helmert; (ii) estima-se a covariância empírica como função da separação angular e ajusta-se um polinômio isotrópico de grau $9$ até $4^\circ$, produzindo um modelo suave e operacional para uso em LSC; (iii) realiza-se a interpolação por LSC com modelagem explícita do ruído de observação e blocagem espacial para mitigar condicionamento e efeitos de borda; (iv) integra-se a grade residual por PVCG com função de Stokes modificada (truncagem compatível com o grau removido), com tratamento da singularidade central e aproximação analítica da zona interna; (v) calcula-se o efeito indireto em pontos e em grade a partir de MDE de alta resolução e, por fim, (vi) extraem-se valores de geoide em marcos de rede de nivelamento (RNs) para validação por resíduos, viés, desvio-padrão e RMSE. A partir desse desenho, formulam-se as seguintes \textbf{hipóteses de trabalho}: (H1) um modelo de covariância isotrópico polinomial até $4^\circ$ captura a estrutura espacial necessária à LSC para o campo residual considerado; (H2) a truncagem espectral da função de Stokes, compatível com o grau removido do modelo global, produz uma ondulação residual coerente com os comprimentos de onda resolvidos pelos dados terrestres; (H3) a modelagem de ruído ao nível de $\sim 1{,}0$\,mGal estabiliza a solução sem introduzir suavização excessiva; (H4) a inclusão do efeito indireto da topografia reduz enviesamentos sistemáticos na comparação com RNs. Com base nessas hipóteses, enuncia-se o \textbf{problema} que orienta o estudo: \emph{como obter, a partir de anomalias de Helmert em pontos irregularmente distribuídos e de um modelo geopotencial de referência, uma superfície de ondulação geoidal residual que seja estatística e fisicamente consistente com marcos de rede de nivelamento na área de estudo, explicitando o papel do modelo de covariância e da modificação de Stokes?}
+
+O \textbf{objetivo geral} é construir e validar um modelo residual de geoide para a área de estudo combinando dados terrestres e informação satelital de referência. Como \textbf{objetivos específicos}, pretende-se: (i) padronizar e calcular anomalias residuais de gravidade; (ii) ajustar uma função de covariância polinomial e avaliar sua aderência; (iii) interpolar o campo residual por LSC com controle de ruído e bordas; (iv) integrar por Stokes modificado para obter a ondulação residual; (v) estimar o efeito indireto e expressá-lo nas grandezas de interesse; e (vi) validar o geoide perante RNs por análise de resíduos e métricas-síntese.
+
+%O trabalho é interessante por três razões complementares. Primeiro, ele explicita o \emph{encadeamento lógico} entre remoção espectral, modelagem estocástica e integração geodésica, conectando problemas conhecidos (heterogeneidade, ruído, topografia) a soluções clássicas (modelo global, LSC, Stokes modificado) em um fluxo único e verificável. Segundo, ele quantifica escolhas de projeto (janela angular, grau polinomial, nível de ruído, raio de integração), permitindo medir trade-offs entre estabilidade e resolução. Terceiro, ele ancora a avaliação em validação externa por RNs, convertendo uma construção teórica em desempenho mensurável (viés, dispersão, RMSE) que orienta ajustes e extensões futuras.
+
+%A organização do texto acompanha essa progressão: em \emph{Materiais e Métodos} detalham-se as etapas de remoção, ajuste de covariância, LSC, integração por Stokes e cálculo do efeito indireto; em \emph{Resultados} apresentam-se produtos e métricas obtidos; e em \emph{Discussão} interpretam-se as implicações desses resultados à luz das hipóteses formuladas e do problema definido acima.
+
+
+
+
+\chapter{Materiais e Métodos}
+
+\vspace{-16pt}
+
+
+\section{Etapa REMOVE: cálculo da anomalia residual em pontos}
+
+Nesta etapa, padronizaram-se, a partir da planilha de controle (\texttt{REMOVER.xlsx}), as colunas necessárias: latitude e longitude (\emph{tide-free}), altura $H$ (\emph{zero-tide}), anomalia de Helmert, contribuição do modelo GOCO06s (até grau 300) e efeito indireto de Helmert. Em seguida, calculou-se ponto a ponto a anomalia residual
+
+\begin{equation}
+    \Delta g_{\text{res}} \;=\; \Delta g_{\text{Helmert}} \;-\; \Delta g_{\text{GOCO06s}} \;-\; \Delta g_{\text{indireto}},
+\end{equation}
+
+
+\noindent gerando a variável \texttt{dg\allowbreak\_res\allowbreak\_calc\allowbreak\_mgal} em mGal.
+
+Para validar a tradução do fluxo MATLAB para Python, comparou-se \texttt{dg\allowbreak\_res\allowbreak\_calc\allowbreak\_mgal} com a coluna de referência da planilha e calcularam-se as métricas de controle (erro absoluto máximo e RMSE). Na sequência, removeram-se os registros incompletos (\texttt{NaN}) nas colunas essenciais e exportaram-se os arquivos \texttt{data/processed/remove\allowbreak\_pontos.csv} (formato canônico) e \texttt{data/processed/remove\allowbreak\_pontos.txt} (sem cabeçalho).
+
+Como diagnóstico, produziram-se duas figuras: (i) o histograma de $\Delta g_{\text{res}}$ (\Figauto{fig:hist-dg-res}) e (ii) a dispersão espacial dos pontos colorida por $\Delta g_{\text{res}}$ (\Figauto{fig:mapa-dg-res}). Esses gráficos permitem detectar tendências residuais e orientar a escolha do grau polinomial a ser empregado na etapa subsequente.
+
+
+\section{Ajuste da função de covariância (polinômio em $s$)}
+
+Com os pontos de anomalia residual $\Delta g_{\text{res}}$ (\texttt{remove\allowbreak\_pontos.csv}), estimou-se a covariância empírica $C_{\text{emp}}(s)$ como função da separação angular $s$ (em graus). Adotou-se a janela $s_{\max}=4^\circ$ e a largura de bin
+
+\begin{equation}
+    \Delta s \;=\; \sqrt{\frac{2\pi\,(s_{\max}/2)^2}{N}},
+\end{equation}
+
+
+\noindent em que $N$ é o número de pontos, conforme o script MATLAB. Para cada par $(i,j)$ com $r_{ij}<s_{\max}$, acumulou-se o produto $g_i g_j$ no bin correspondente a $r_{ij}$ e, ao final, calculou-se a média por bin, obtendo-se a curva empírica (mGal$^2$).
+
+Em seguida, ajustou-se por mínimos quadrados um polinômio de grau $n=9$,
+
+\begin{equation}
+    C(s)\;=\;a_0 + a_1 s + \cdots + a_n s^n,
+\end{equation}
+
+\noindent utilizando a matriz de Vandermonde e a solução numérica estável (\texttt{lstsq}). A qualidade do ajuste foi quantificada pelo coeficiente de determinação $R^2$. A comparação visual entre $C_{\text{emp}}$ e $C_{\text{fit}}$ é mostrada na \Figauto{fig:covariance-fit}. Os coeficientes $a_0,\ldots,a_n$ foram exportados em \texttt{data/processed/Xa\allowbreak\_coeficientes\allowbreak\_polinomiais.txt} para uso posterior na colocação por mínimos quadrados (LSC).
+
+Esse modelo polinomial isotrópico fornece uma aproximação suave e operacional de $C(s)$ para $s\le 4^\circ$, reproduzindo a metodologia do pacote MATLAB da disciplina e viabilizando a construção das matrizes de covariância observação–observação ($\mathbf{C}_{zz}$) e alvo–observação ($\mathbf{C}_{sz}$) na etapa seguinte.
+
+
+\section{Interpolação por Colocação (LSC) com covariância polinomial}
+
+A anomalia residual em pontos (\texttt{remove\allowbreak\_pontos.csv}) foi interpolada para uma grade regular por Colocação por Mínimos Quadrados (LSC). Empregou-se uma covariância isotrópica polinomial
+
+\begin{equation}
+    C(s)=a_0+a_1 s+\cdots+a_9 s^9,
+\end{equation}
+
+\noindent cujos coeficientes $a_k$ vêm do passo anterior, com $s$ medido em graus. O ruído de observação foi modelado por
+
+\begin{equation}
+    \Sigma_n=\mathrm{diag}(N),\qquad N=1{,}0~\mathrm{mGal}.
+\end{equation}
+
+Para alvos $\mathbf{s}$ e observações $\mathbf{z}$, o estimador adotado foi
+
+\begin{equation}
+    \hat{\mathbf{z}}_{\mathbf{s}} \;=\; \mathbf{C}_{\mathbf{s}\mathbf{z}}
+    \bigl(\mathbf{C}_{\mathbf{z}\mathbf{z}}+\Sigma_n\bigr)^{-1}\mathbf{z},
+\end{equation}
+
+\noindent em que $\mathbf{C}_{\mathbf{z}\mathbf{z}}$ e $\mathbf{C}_{\mathbf{s}\mathbf{z}}$ são avaliadas por $C(s)$ a partir das separações angulares aproximadas
+
+\begin{equation}
+    s_{ij}=\sqrt{(\Delta\lambda)^2+(\Delta\varphi)^2}.
+\end{equation}
+
+\noindent Para mitigar custo computacional e efeitos de borda, a interpolação foi executada por blocos de $0{,}5^\circ\times 0{,}5^\circ$ com margem (\emph{offset}) de $0{,}25^\circ$; em blocos com poucas observações, ampliou-se a vizinhança.
+
+Os valores preditos foram reunidos e reformatados na malha alvo. A grade resultante (\texttt{Grade\allowbreak\_AG\allowbreak\_res\allowbreak\_Poly9.tif}) foi escrita em \texttt{EPSG:4326} com resolução de $0{,}05^\circ$, \emph{geotransform} com meia célula nos limites e orientação \emph{north-up} (inversão vertical da matriz na escrita).
+
+Esse produto alimenta a etapa seguinte (PVCG com função de Stokes modificada), na qual a grade de $\Delta g_{\text{res}}$ é integrada para gerar o $N$ residual.
+
+
+\section{Integração por PVCG com função de Stokes modificada (Helmert)}
+
+Partiu-se da grade de anomalias residuais $\Delta g_{\text{res}}$ (mGal), a qual foi convertida para m/s$^2$. Em seguida, definiu-se o domínio de cálculo $P$ recuado em $1^\circ$ para garantir vizinhança completa no raio de integração de $1^\circ$. Para cada ponto $P$, obteve-se $\Delta g(P)$ por interpolação bilinear da grade e calculou-se a gravidade normal $\gamma_0(\varphi_P)$ pela série de Somigliana. As áreas dos pixels $Q$ foram aproximadas por
+
+\begin{equation}
+    A_k \;=\; R^2\,\Delta \,\bigl[\sin\!\bigl(\varphi_Q+\tfrac{\Delta}{2}\bigr)-\sin\!\bigl(\varphi_Q-\tfrac{\Delta}{2}\bigr)\bigr],
+\end{equation}
+
+\noindent em que $R$ é o raio médio terrestre e $\Delta$ é a resolução angular em radianos.
+
+A ondulação residual foi obtida pela integral de Stokes modificada,
+
+\begin{equation}
+N_{\text{res}}(P) \;=\; \frac{1}{4\pi R\,\gamma_0(P)}
+\iint_{\sigma}\!\bigl[S(\psi)-S_H(\psi)\bigr]\;\Delta g(Q)\,\mathrm{d}\sigma \;+\; N_i(P),
+\end{equation}
+
+
+\noindent na qual $S(\psi)$ é a função de Stokes (implementada na forma numérica de Wong \& Gore com $s=\sin(\Delta/2)$) e $S_H(\psi)$ é a modificação espectral truncada nos graus $n=2,\ldots,300$, com coeficientes $(2n+1)/(n-1)$ e polinômios de Legendre $P_n(\cos\psi)$. A singularidade do próprio pixel foi removida explicitamente, e a contribuição da zona interna foi aproximada por
+
+\begin{equation}
+    N_i(P) \;=\; \frac{R}{\gamma_0(P)}\,
+    \sqrt{\frac{\cos\varphi_P\,\Delta^2}{\pi}}\;\Delta g(P).
+\end{equation}
+
+A integral contínua foi aproximada por soma ponderada por áreas dentro do raio de $1^\circ$, resultando em uma grade $N_{\text{res}}$ (m) exportada como GeoTIFF no \texttt{EPSG:4326} (\texttt{N\allowbreak\_residual.tif}). Como diagnóstico, geraram-se também um mapa (\Figauto{fig:nres-mapa}), um histograma (\Figauto{fig:nres-hist}) e um perfil zonal (\Figauto{fig:nres-perfil}).
+
+
+
+
+\section{Efeito indireto (EI) pontual e em grade}
+
+Avaliou-se o efeito indireto (EI) da topografia nos pontos de cálculo $P$ a partir do MDE MERIT/SRTM15+ (30″). Para cada $P$ (lat, lon), obteve-se a altitude do terreno $H_P$ por interpolação bilinear no MDE. Com a resolução de célula $\Delta$ (em metros) e as constantes da prática ($G$, $\rho=2670~\mathrm{kg\,m^{-3}}$, $R$), definiram-se os coeficientes
+
+\begin{align}
+    c_0 & = -\pi G\rho H_P^2, \\
+    c_1 & = -\frac{G\rho}{6}\Delta^2, \\
+    c_2 & = \frac{3G\rho}{40}\Delta^2.
+\end{align}
+
+Selecionaram-se os pixels do MDE a até $100$~km de $P$ e calculou-se a distância plana $l$ (em m), corrigida por curvatura:
+
+\begin{equation}
+    l_{\text{corr}} \;=\; l + \frac{l^3}{3R^2}.
+\end{equation}
+
+\noindent O potencial de EI foi aproximado por
+
+\begin{equation}
+    EI \;=\; c_1 \sum \frac{H^3 - H_P^3}{l_{\text{corr}}^{\,3}}
+        \;+\; c_2 \sum \frac{H^5 - H_P^5}{l_{\text{corr}}^{\,5}},
+\end{equation}
+
+\noindent e convertido nas grandezas de interesse por
+
+\begin{equation}
+    EI_N \;=\; \frac{EI}{\gamma_0(\varphi_P)},\qquad
+    EI_{\Delta g} \;=\; \frac{EI + c_0}{\gamma_0(\varphi_P)}\times 0{,}3086,
+\end{equation}
+
+\noindent em que $\gamma_0(\varphi_P)$ é a gravidade normal no elipsoide e $0{,}3086~\mathrm{mGal/m}$ é o gradiente vertical normal.
+
+Os resultados pontuais foram exportados em \texttt{EI\allowbreak\_pontos.csv} e, em seguida, interpolados para a malha alvo (lat/lon únicos) com \texttt{griddata} (método linear com \emph{nearest} como \emph{fallback}). A grade $EI_N$ foi empacotada em \texttt{xarray} e salva como GeoTIFF (\texttt{EI\allowbreak\_N.tif}, EPSG:4326). Produziram-se também figuras diagnósticas, histograma da \Figauto{fig:ei-hist} e mapa de dispersão da \Figauto{fig:ei-pontos} para inspeção visual da distribuição de $EI_N$.
+
+\section{Extração e validação do geoide}
+
+Nesta etapa, executaram-se duas ações complementares: (i) a extração do valor do modelo geoidal $N_{\text{model}}$ nos marcos RN (lat, lon) e (ii) a validação do geoide $\zeta$ com base nos RNs que possuem altura elipsoidal e normal. Para garantir reprodutibilidade, os GeoTIFFs foram lidos com conversão de NoData para NaN, as coordenadas foram avaliadas nos centros de pixel e o vetor de latitudes foi ordenado no sentido sul–norte antes da interpolação bilinear.
+
+Leu-se o raster \texttt{Modelo\allowbreak\_geoidal.tif} e, para cada RN com coordenadas (lat, lon), interpolou-se $N_{\text{model}}$ via \texttt{RegularGridInterpolator}. Os valores resultantes foram armazenados em \texttt{N\allowbreak\_model\allowbreak\_RN.csv}.
+
+Para os RNs com altura elipsoidal $h$ e altura normal $HN$, calculou-se a grandeza observada
+
+\begin{equation}
+    \zeta_{\mathrm{RN}} \;=\; h - HN.
+\end{equation}
+
+
+\noindent Em seguida, interpolou-se o valor do modelo quase-geoidal, $\zeta_{\text{model}}$, a partir do raster \texttt{Modelo\allowbreak\_quase\allowbreak\_geoide.tif}. A qualidade do ajuste foi avaliada por meio dos resíduos $r=\zeta_{\text{model}}-\zeta_{\mathrm{RN}}$ e das métricas
+
+\begin{equation}
+    \text{viés}=\overline{r},\qquad
+    \sigma=\mathrm{std}(r),\qquad
+    \mathrm{RMSE}=\sqrt{\overline{r^{2}}},
+\end{equation}
+
+\noindent e os resultados completos (incluindo $\zeta_{\text{model}}$, $\zeta_{\mathrm{RN}}$ e $r$) foram exportados para \texttt{validacao\allowbreak\_quase\allowbreak\_geoide.csv}.
+
+Pressupõe-se que os rasters estejam em coordenadas geográficas (graus). Caso contrário, as coordenadas dos RNs devem ser transformadas para o CRS dos rasters antes da interpolação, a fim de evitar vieses de amostragem.
+
+
+\chapter{Resultados}
+
+\vspace{-16pt}
+
+Calculou-se a anomalia residual pontual $\Delta g_{\text{res}}$ a partir das colunas padronizadas da planilha de controle, gerando o conjunto canônico \texttt{remove\allowbreak\_pontos.csv}; como controle de consistência, computaram-se as diferenças entre a variável calculada e a coluna de referência (erro ponto a ponto) e estimaram-se as métricas de verificação (erro absoluto máximo e RMSE). A distribuição global de $\Delta g_{\text{res}}$ está sintetizada no histograma da \Figauto{fig:hist-dg-res}, enquanto a localização dos pontos e seus valores associados aparece no mapa de dispersão da \Figauto{fig:mapa-dg-res}. O histograma resume o quadro geral do conjunto, e o mapa ilustra padrões espaciais e eventuais concentrações ou lacunas de amostragem, facilitando a leitura dos resultados.
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.75\linewidth]{../data/processed/hist_dg_res.png}
+\caption{Histograma da anomalia de gravidade residual ($\Delta g_{\text{res}}$) em mGal.}
+\label{fig:hist-dg-res}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.75\linewidth]{../data/processed/mapa_dg_res.png}
+\caption{Distribuição espacial dos pontos gravimétricos coloridos segundo a anomalia de gravidade residual ($\Delta g_{\text{res}}$).}
+\label{fig:mapa-dg-res}
+\end{figure}
+
+
+Estimou-se a covariância empírica $C_{\text{emp}}(s)$ até $s_{\max}=4^\circ$ e, em seguida, ajustou-se um polinômio de grau $n=9$; a qualidade do ajuste foi quantificada por $R^2$ e verificada por inspeção visual da curva empírica frente à ajustada, cuja sobreposição está apresentada na \Figauto{fig:covariance-fit}. O resultado principal é um ajuste de grau $9$ que reproduz o comportamento típico de $C(s)$ em todo o intervalo $s \le 4^\circ$, com coeficiente de determinação $R^{2}=0{,}9549$.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.75\linewidth]{../data/processed/covariance_fit.png}
+\caption{Ajuste polinomial da função de covariância empírica (grau $n=9$). A curva azul representa a covariância ajustada e a curva laranja mostra a covariância empírica. O coeficiente de determinação obtido foi $R^{2} = 0.9549$.}
+\label{fig:covariance-fit}
+\end{figure}
+
+
+Interpolou-se a anomalia residual $\Delta g_{\text{res}}$ por colocação (LSC) com covariância polinomial, construindo-se uma grade regular; a qualidade foi controlada ao modelar o ruído de observação como $\Sigma_n=\mathrm{diag}(1{,}0~\mathrm{mGal})$ e ao executar a interpolação em blocos de $0{,}5^\circ\times 0{,}5^\circ$ com margem de $0{,}25^\circ$, o que mitigou efeitos de borda e custos computacionais; como resultado, gerou-se uma grade em \texttt{EPSG:4326} com resolução de $0{,}05^\circ$, armazenada em \texttt{Grade\allowbreak\_AG\allowbreak\_res\allowbreak\_Poly9.tif}, a qual alimenta diretamente a integração por Stokes modificada apresentada na sequencia.
+
+
+Integraram-se os valores de $\Delta g_{\text{res}}$ (em m/s$^2$) por meio da função de Stokes modificada, obtendo-se a grade de ondulação residual $N_{\text{res}}$; a qualidade do processamento foi assegurada ao recuar o domínio de cálculo em $1^\circ$ para garantir vizinhança completa, ao remover explicitamente a singularidade do pixel central e ao aproximar analiticamente a contribuição da zona interna; o produto final foi exportado como \texttt{N\_residual.tif} e é apresentado como mapa temático na \Figauto{fig:nres-mapa}, histograma na \Figauto{fig:nres-hist} e perfil zonal na \Figauto{fig:nres-perfil}, em que o mapa ilustra o campo $N_{\text{res}}$ na área de estudo, o histograma resume sua distribuição e o perfil exemplifica a variação ao longo de uma latitude representativa.
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.705\linewidth]{../data/processed/N_res.png}
+\caption{Modelo geoidal residual (Stokes mod.). Barra de cores em metros para $N_{\text{res}}$.}
+\label{fig:nres-mapa}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.70\linewidth]{../data/processed/istograma_N_res.png}
+\caption{Distribuição dos valores de $N_{\text{res}}$ (m). A linha tracejada indica a média.}
+\label{fig:nres-hist}
+\end{figure}
+
+Calculou-se o efeito indireto (EI) em cada ponto $P$ a partir do MDE (30″) e, em seguida, interpolou-se $EI_{N}$ para a malha alvo, gerando a grade \texttt{EI\_N.tif} e o conjunto pontual \texttt{EI\_pontos.csv}; a qualidade do processamento foi controlada ao limitar o raio de integração a $100$~km, corrigir a distância por curvatura e adotar interpolação linear com preenchimento por \emph{nearest}; a distribuição e a espacialização de $EI_{N}$ estão sintetizadas nas \Figauto{fig:ei-hist}, \Figauto{fig:ei-pontos} e \Figauto{fig:ei-grid}, em que o histograma resume a amplitude, o mapa de pontos ilustra a variabilidade espacial e a grade interpolada apresenta o campo na malha do modelo.
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=\linewidth]{../data/processed/perfil_N_res.png}
+\caption{Perfil de $N_{\text{res}}$ ao longo de uma latitude representativa.}
+\label{fig:nres-perfil}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.70\linewidth]{../data/processed/EI_N.png}
+\caption{Distribuição do efeito indireto em ondulação, $EI_N$ (m).}
+\label{fig:ei-hist}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.70\linewidth]{../data/processed/pontos_EI_N.png}
+\caption{$EI_N$ (m) nos pontos de cálculo (dispersão espacial).}
+\label{fig:ei-pontos}
+\end{figure}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.705\linewidth]{../data/processed/da_EI.png}
+\caption{Grade interpolada de $EI_N$ (m) na malha do modelo.}
+\label{fig:ei-grid}
+\end{figure}
+
+Interpolou-se $N_{\text{model}}$ nos marcos RN a partir de \texttt{Modelo\_geoidal.tif} e validou-se o geoide pela comparação entre $\zeta_{\text{model}}$ e $\zeta_{\text{RN}}=h-HN$; para assegurar a qualidade dos dados, os GeoTIFFs foram lidos com conversão de NoData para NaN, as coordenadas foram avaliadas no centro de pixel e o vetor de latitudes foi ordenado sul–norte antes da interpolação bilinear; a validação utilizou $n=32$ RNs e resultou em viés de $-0{,}434$~m, desvio-padrão de $0{,}144$~m e RMSE de $0{,}456$~m, com as distribuições, o espalhamento e as tendências dos resíduos sintetizados nas \Figauto{fig:zeta-hist}, \Figauto{fig:zeta-mapa} e \Figauto{fig:zeta-scatter}, enquanto a espacialização de $N_{\text{model}}$ nos RNs é apresentada na \Figauto{fig:nmodel-rn}, onde o diagrama $1{:}1$ exemplifica o comportamento conjunto entre $\zeta_{\text{model}}$ e $\zeta_{\text{RN}}$ e o mapa de resíduos ilustra casos típicos e eventuais exceções locais.
+
+% --- Validação (ζ): histograma ---
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.700\linewidth]{../data/processed/validacao_zeta_hist.png}
+\caption{Histograma dos resíduos do geoide nos RNs ($\zeta_{\text{model}}-\zeta_{\text{RN}}$).}
+\label{fig:zeta-hist}
+\end{figure}
+
+% no preâmbulo:
+% \usepackage{subcaption}
+
+\begin{figure}[!h]
+\centering
+
+\begin{subfigure}[t]{0.34\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../data/processed/validacao_zeta_mapa.png}
+    \caption{Resíduos do geoide por estação RN (lon$\times$lat).}
+    \label{fig:zeta-mapa}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.28\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../data/processed/validacao_zeta_scatter.png}
+    \caption{Diagrama $\zeta_{\text{model}}$ vs. $\zeta_{\text{RN}}$ (reta 1:1).}
+    \label{fig:zeta-scatter}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.34\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{../data/processed/N_model_RN_mapa.png}
+    \caption{$N_{\text{model}}$ (m) nos pontos RN.}
+    \label{fig:nmodel-rn}
+\end{subfigure}
+
+\caption{Validação do geoide e campo $N_{\text{model}}$ nos RNs.}
+\label{fig:validacao-rn-triplo}
+\end{figure}
+
+
+
+\chapter{Discussão}
+
+\vspace{-16pt}
+
+O conjunto \texttt{remove\_pontos.csv} foi aceito para uso subsequente porque passou por controle de consistência com erro ponto a ponto e métricas (erro absoluto máximo e RMSE) calculadas a partir da comparação com a planilha de referência, conforme relatado em \emph{Resultados}; as figuras \Figauto{fig:hist-dg-res} e \Figauto{fig:mapa-dg-res} sustentam essa decisão ao sintetizarem, respectivamente, a amplitude global e a cobertura espacial de $\Delta g_{\text{res}}$, condições necessárias para estimar de forma estável a covariância empírica e suportar o ajuste polinomial posterior. O ajuste de grau $n=9$ reproduziu $C_{\text{emp}}(s)$ no intervalo $s \le 4^\circ$ com $R^{2}=0{,}9549$ (\Figauto{fig:covariance-fit}), indicador objetivo de aderência entre modelo e dados; esse desempenho justifica, com base no número reportado, o uso dessa função na construção de $\mathbf{C}_{zz}$ e $\mathbf{C}_{sz}$ para a colocação, mantendo a hipótese operacional de isotropia e a escala de correlação implícita no polinômio ajustado. A estratégia de LSC adotou $\Sigma_n=\mathrm{diag}(1{,}0~\mathrm{mGal})$ e blocagem com margem, escolhas explicitadas em \emph{Resultados} para controlar condicionamento e bordas; o produto gerado (\texttt{Grade\_AG\_res\_Poly9.tif}, $0{,}05^\circ$) cumpre o objetivo de prover um campo contínuo de entrada para a integração, e sua construção se apoia diretamente no ajuste polinomial validado por $R^2$, de modo que a estabilidade do interpolador se encontra fundamentada no desempenho observado da covariância ajustada.
+
+
+A grade $N_{\text{res}}$ resultou da integração de $\Delta g_{\text{res}}$ com domínio recuado de $1^\circ$, remoção explícita da singularidade e aproximação analítica da zona interna, decisões metodológicas registradas em \emph{Resultados}; o mapa temático, o histograma e o perfil (\Figauto{fig:nres-mapa}–\Figauto{fig:nres-perfil}) documentam, sem ambiguidade, a continuidade espacial do campo, a distribuição de valores e a variação ao longo de uma seção latitudinal, fornecendo a base empírica para qualquer avaliação subsequente de amplitude e gradientes do modelo residual. Os cálculos pontuais de EI e a grade $EI_N$ (\texttt{EI\_N.tif}) foram produzidos com raio de integração de $100$~km, correção de curvatura e interpolação linear com \emph{nearest} como \emph{fallback}, parâmetros explicitados em \emph{Resultados}; as figuras \Figauto{fig:ei-hist}, \Figauto{fig:ei-pontos} e \Figauto{fig:ei-grid} mostram, respectivamente, a amplitude, a variabilidade espacial nos pontos de cálculo e o campo na malha do modelo, o que permite, com base nesses dados, avaliar a contribuição topográfica indireta tanto local quanto regional antes de qualquer combinação com $N_{\text{res}}$.
+
+
+A validação do geoide em $n=32$ RNs apresentou viés de $-0{,}434$~m, desvio-padrão de $0{,}144$~m e RMSE de $0{,}456$~m, números reportados em \emph{Resultados} e que caracterizam, de forma objetiva, o desempenho do modelo frente às observações; por definição estatística, a remoção do viés reduziria o RMSE ao nível do desvio-padrão (aprox.\ $0{,}144$~m), o que quantifica, apenas com base nos dados, o ganho potencial de uma correção média simples. As figuras \Figauto{fig:zeta-hist}, \Figauto{fig:zeta-mapa} e \Figauto{fig:zeta-scatter} sustentam essas afirmações ao exibirem a distribuição dos resíduos, sua organização espacial, a relação 1:1 entre $\zeta_{\text{model}}$ e $\zeta_{\text{RN}}$ e possíveis dependências com latitude/longitude; adicionalmente, a \Figauto{fig:nmodel-rn} documenta o campo $N_{\text{model}}$ nos RNs usados, permitindo cotejar, nos dados, cobertura e desempenho local. Considerados em conjunto, os resultados mostram (i) dados pontuais de $\Delta g_{\text{res}}$ com cobertura e amplitude documentadas por histograma e mapa, (ii) função de covariância ajustada com alta aderência ($R^{2}=0{,}9549$) que fundamenta a LSC, (iii) grade interpolada de $\Delta g_{\text{res}}$ apta à integração, (iv) modelo $N_{\text{res}}$ caracterizado por mapa, histograma e perfil, e (v) EI quantificado e espacializado, além de (vi) validação do geoide com viés e dispersão explicitamente mensurados. Essas constatações derivam diretamente das métricas e figuras apresentadas e, portanto, suportam decisões práticas como a aplicação de correção de viés na validação, testes de sensibilidade ao ruído $\Sigma_n$ e ao grau do polinômio, e o uso combinado de $N_{\text{res}}$ e $EI_N$ em etapas subsequentes; quaisquer interpretações geofísicas finas (por exemplo, causas de padrões regionais específicos) devem ser baseadas nas cartas e estatísticas já incluídas, evitando extrapolações além do que os dados mostram.
+
+\chapter{Conclusão}
+
+\vspace{-16pt}
+
+Este trabalho demonstra um encadeamento entre remoção espectral, modelagem estocástica e integração geodésica para construir um modelo residual de geoide a partir de anomalias de Helmert e de um modelo geopotencial de referência. Parte-se do problema de compatibilizar escalas espectrais distintas -- comprimentos de onda longos bem descritos por modelos globais e feições curtas resolvidas por dados terrestres -- e chega-se a superfícies residuais fisicamente interpretáveis e mensuradas contra marcos de referência.
+
+No nível estocástico, confirma-se que um modelo de covariância polinomial isotrópico até $4^\circ$ captura a estrutura espacial relevante do campo residual: o ajuste de grau $9$ alcança $R^{2}=0{,}9549$, indicando aderência suficiente para sustentar a Colocação por Mínimos Quadrados. No nível numérico, a LSC, com modelagem explícita de ruído ao nível de $1{,}0\,\mathrm{mGal}$ e blocagem com margem, produz uma grade contínua e estável para integração, sem sinais de suavização excessiva nos diagnósticos apresentados. No nível geodésico, a integração por PVCG com função de Stokes modificada -- truncada de modo compatível com o grau removido -- gera uma ondulação residual contínua e coerente com os comprimentos de onda preservados, com tratamento explícito da singularidade e aproximação analítica da zona interna.
+
+A avaliação externa por marcos de rede de nivelamento mostra desempenho mensurável do geoide modelado: viés de $-0{,}434$\,m, desvio-padrão de $0{,}144$\,m e $\mathrm{RMSE}=0{,}456$\,m para o conjunto analisado. Por definição, a simples remoção do viés reduziria o $\mathrm{RMSE}$ ao patamar do desvio-padrão ($\sim 0{,}144$\,m), quantificando de forma objetiva o ganho potencial de uma correção média. A estimativa e a espacialização do efeito indireto (EI) ficam estabelecidas como componente adicional do fluxo; embora os resultados indiquem contribuição topográfica sistemática, a combinação explícita $N_{\text{res}}+EI_N$ na validação final permanece uma etapa a consolidar para testar integralmente a hipótese de redução de enviesamento.
+
+À luz das hipóteses formuladas, conclui-se que: (H1) é suportada pelos resultados do ajuste e pela estabilidade da LSC; (H2) é corroborada pelos produtos integrados e pelos diagnósticos de continuidade; (H3) é consistente com o equilíbrio observado entre condicionamento e preservação de variabilidade; (H4) permanece parcialmente aberta, exigindo validação com a soma explícita do EI ao campo residual na comparação com RNs.
+
+As principais limitações decorrem de escolhas operacionais que impõem compromissos entre resolução e estabilidade: isotropia do modelo de covariância, janela angular de $4^\circ$, grau polinomial fixado, truncagem espectral alinhada ao modelo global, e número/modo de distribuição dos RNs disponíveis. Adicionalmente, aproximações geométricas (área de pixel e correção de curvatura) e a incerteza do MDE afetam a estimativa do EI em curtas escalas.
+
+%Como desdobramentos, propõem-se: (i) testar famílias de covariância alternativas (exponencial, Matérn) e anisotropia; (ii) estimar componentes de variância para calibrar $\Sigma_n$ e comparar contra validação cruzada; (iii) investigar a sensibilidade à truncagem da modificação de Stokes e ao raio de integração; (iv) integrar explicitamente $N_{\text{res}}+EI_N$ na validação com RNs e avaliar a remoção sistemática de viés; (v) ampliar e diversificar a rede de controle; e (vi) quantificar incertezas propagadas até as superfícies finais.
+
+%Em síntese, consolida-se um fluxo reprodutível que liga, de forma transparente, problemas a soluções: a remoção espectral reduz o fundo de variância; a LSC, ancorada em covariância ajustada, fornece um campo residual estável; a Stokes modificada converte esse campo em ondulação residual consistente; e a validação por RNs traduz a construção teórica em métricas operacionais. Esse encadeamento oferece uma base sólida para extensões que elevem a acurácia regional de modelos de geoide/geoide e ampliem sua utilidade em aplicações geodésicas e geofísicas.

@@ -1,0 +1,294 @@
+% Pacotes básicos
+% ----------------------------------------------------------
+%\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento (conversão automática dos acentos)
+\usepackage{lastpage}			% Usado pela Ficha catalográfica
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}		    	% Controle das cores
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{microtype} 			% para melhorias de justificação
+\usepackage{ifthen}		    	% para montar condicionais
+\PassOptionsToPackage{english,brazil}{babel}
+\usepackage{babel} % para utilizar termos em portugues
+\usepackage[final]{pdfpages}    % para incluir páginas de arquivos pdf
+\usepackage{lipsum}				% para geração de dummy text
+\usepackage{csquotes}
+\usepackage{siunitx}
+\sisetup{parse-numbers = false}
+\DeclareSIUnit{\gal}{Gal}
+
+
+%\usepackage[style=long]{glossaries}
+%\usepackage{abntex2glossaries}
+\usepackage{mathtools,bm}
+\usepackage{subcaption}
+\usepackage{aliascnt}
+\usepackage{chngcntr}
+\usepackage{listings}
+\usepackage{forest}
+\usepackage{booktabs}
+\usepackage{xparse}
+\usepackage{mfirstuc}
+% permite representar o cancelamento de termos em texto ou equacoes
+\usepackage{cancel}
+% cores extendidas
+\usepackage{xcolor}
+% gera diagramas a partir de listas
+\usepackage{smartdiagram}
+% Para a figura ficar na posição correta
+\usepackage{float}
+% supporte para fontes da Text Companion
+\usepackage{textcomp}
+% uso de longtable
+\usepackage{longtable}
+% simbolos matematicos
+\usepackage{amsmath}
+\usepackage{amssymb}
+\DeclareMathOperator{\RMSE}{RMSE}
+\DeclareMathOperator{\WRMSE}{WRMSE}
+% páginas em paisagem
+\usepackage{lscape}
+% mescla de colunas em tabelas
+\usepackage{multicol}
+% mescla de linhas em tabelas
+\usepackage{multirow}
+% criação do indice de quadros
+\usepackage{newfloat}
+% configura legenda
+\usepackage{caption}
+%[format=plain]
+	%\renewcommand\caption[1]{%
+    \captionsetup{font=small}	% tamanho da fonte 10pt
+    %,format=hang
+ 	% \caption{#1}}
+	%\captionsetup{width=0.8\textwidth}
+
+  % ----------------------------------------------------------
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,     % cor dos links internos (sumário, referências cruzadas etc.)
+    citecolor=blue,     % cor das citações (quando se usa biblatex/natbib)
+    filecolor=blue,     % cor de links para arquivos locais
+    urlcolor=blue       % cor dos hyperlinks (endereço na internet)
+}
+
+% ----------------------------------------------------------
+%\usepackage{fontspec}
+%\newfontfamily\jetbrainsmono{JetBrainsMono NL Mono}
+\renewcommand{\ttdefault}{lmvtt}
+
+
+% ----------------------------------------------------------
+
+% definição das cores
+\definecolor{blue}{RGB}{55,10,249}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{codeblue}{rgb}{0.26,0.44,0.76}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+  % ----------------------------------------------------------
+
+\lstset{
+    language=Python,
+    basicstyle=\fontfamily{lmvtt}\selectfont\small,
+    keywordstyle=\color{codeblue}\bfseries,
+    stringstyle=\color{codegreen},
+    commentstyle=\color{codegray}\itshape,
+    numbers=none,
+    showstringspaces=false,
+    breaklines=true,
+    captionpos=t,
+    frame=single
+}
+
+% Define o novo ambiente flutuante
+\DeclareFloatingEnvironment[
+  fileext=lon,
+  listname={Lista de Funções},
+  name={Função },
+  placement=tbhp,
+]{funcaofloat}
+
+% Faz o \autoref chamar "função" (minusculo, como você queria)
+\providecommand*{\funcaofloatautorefname}{função}
+
+\newcommand{\funcauto}[1]{\textbf{função~\ref{#1}}}
+\newcommand{\Funcauto}[1]{\textbf{Função~\ref{#1}}}
+\newcommand{\claauto}[1]{\textbf{classe~\ref{#1}}}
+
+
+% Se quiser numeração contínua (sem reset por capítulo)
+\counterwithout{funcaofloat}{chapter}
+
+
+% Pacotes de citações BibLaTeX
+% ----------------------------------------------------------
+\usepackage[style=authoryear,backref=true,backend=biber,citecounter=true,backrefstyle=three,maxnames=2]{biblatex}
+
+% Remover recuo do sobrenome do autor
+\setlength{\bibhang}{0pt}
+
+\DefineBibliographyStrings{brazil}{%
+ backrefpage = {Citado \arabic{citecounter} vez na página},% originally "cited on page"
+ backrefpages = {Citado \arabic{citecounter} vezes nas páginas},% originally "cited on pages"
+}
+
+% ----------------------------------------------------------
+\PrepareListOf{quadro}{%
+\renewcommand{\cftfigpresnum}{Quadro~}}
+
+\DeclareFloatingEnvironment[
+fileext=loq,
+listname={\textbf{LISTA DE QUADROS}},
+name=Quadro,
+%placement=p,
+within= none, % numeracao continua
+%within=section, % numeracao reinicia em cada seccao
+%chapterlistsgaps=off
+]{quadro}
+
+\newlistentry{quadro}{loq}{0}
+
+% Define o novo ambiente flutuante
+\DeclareFloatingEnvironment[
+    fileext=lon,
+    listname={Lista de Notebooks},
+    name={Jupyter Notebook },  % Aqui define o nome que aparece na legenda
+    placement=tbhp,
+]{jupyternotebook}
+
+% Define contador auxiliar para integração com autoref
+\newaliascnt{jupyternotebookcnt}{jupyternotebook}
+
+% Agora definimos o nome para autoref explicitamente
+\providecommand*{\jupyternotebookautorefname}{notebook}
+
+\newcommand{\notebookauto}[1]{\textbf{notebook~\ref{#1}}}
+\newcommand{\Notebookauto}[1]{\textbf{Notebook~\ref{#1}}}
+
+\newcommand{\eqauto}[1]{\textbf{equação~\ref{#1}}}
+
+\newcommand{\figauto}[1]{\textbf{figura~\ref{#1}}}
+\newcommand{\Figauto}[1]{\textbf{Figura~\ref{#1}}}
+
+
+% Finaliza o alias (necessário)
+\aliascntresetthe{jupyternotebookcnt}
+
+% Remove a numeração por capítulo
+\counterwithout{jupyternotebook}{chapter}
+
+% Customize ‘List of Diagrams’
+\PrepareListOf{quadro}{%
+\renewcommand{\cftquadropresnum}{\normalsize{QUADRO}~}
+\setlength{\cftquadronumwidth}{3.2cm}
+%\renewcommand{\cftquadroname}{\quadroname\space}
+\renewcommand*{\cftquadroaftersnum}{\hfill--\hfill}
+}
+
+\makeatletter
+%% we define a helper macro for adjusting lists of new floats to
+%% accept a * behind them for not being shown in the TOC, like
+%% the other list printing commands in memoir
+\newcommand{\AdjustForMemoir}[1]{%
+  \csletcs{kept@listof#1}{listof#1}%
+  \csdef{listof#1}{%
+    \@ifstar
+     {\csappto{newfloat@listof#1@hook}{\append@star}%
+      \csuse{kept@listof#1}}%
+     {\csuse{kept@listof#1}}%
+  }
+}
+\def\append@star#1{#1*}
+\makeatother
+
+
+\AdjustForMemoir{quadro} % prepare `\listofdirfigures` so it accepts a *
+
+\makeatletter
+\let\oldcontentsline\contentsline
+\def\contentsline#1#2{%
+    \expandafter\ifx\csname l@#1\endcsname\l@section
+    \expandafter\@firstoftwo
+    \else
+    \expandafter\@secondoftwo
+    \fi
+    {%
+    	\oldcontentsline{#1}{\MakeTextUppercase{#2}}%
+    }{%
+    \normalsize %ajusta tamanho da fonte na lista
+    \oldcontentsline{#1}{#2}%
+}%
+}
+\makeatother
+
+
+% Ajusta indentação de Referencias no ToC
+% ----------------------------------------------------------
+\defbibheading{bay}[\bibname]{%
+  \chapter*{#1}%
+  \markboth{#1}{#1}%
+  \addcontentsline{toc}{chapter}
+  {\protect\numberline{}\bibname}
+}
+
+\makeatletter
+\pretocmd{\chapter}{\addtocontents{toc}{\protect\addvspace{-5\p@}}}{}{}
+\pretocmd{\section}{\addtocontents{toc}{\protect\addvspace{2\p@}}}{}{}
+\makeatother
+
+
+
+\newcommand{\DirectoryTree}[1]{%
+\begin{forest}
+for tree={
+    font=\ttfamily,
+    grow'=0,
+    % padrão para nós não-raiz
+    parent anchor=west,
+    child anchor=west,
+    anchor=west,
+    calign=first,
+    l=20pt,
+    s sep=8pt,
+    inner xsep=4pt,
+    % desloca o rótulo da raiz e faz com que as arestas dos filhos saiam pela direita
+    if level=0{
+        xshift=5pt,          % move só o rótulo raiz para a direita
+        parent anchor=east,  % faz os filhos se conectarem à direita da raiz
+    }{},
+    edge path={
+        \noexpand\path [draw, \forestoption{edge}]
+        (!u.parent anchor) -| + (5pt,0) |- (.child anchor)\forestoption{edge label};
+    },
+}
+#1
+\end{forest}
+}
+
+
+
+
+% Novo ambiente flutuante para diagramas de diretórios
+\DeclareFloatingEnvironment[
+    fileext=lod,
+    listname={Lista de Sub-diretórios},
+    name={Sub--diretório },
+    placement=tbhp,
+]{directorydiagram}
+
+% Suporte ao \autoref
+\newaliascnt{directorydiagramcnt}{directorydiagram}
+\providecommand*{\directorydiagramautorefname}{sub-diretório}
+
+\newcommand{\sdauto}[1]{\textbf{sub--diretório~\ref{#1}}}
+\newcommand{\Sdauto}[1]{\textbf{Sub--diretório~\ref{#1}}}
+
+
+\aliascntresetthe{directorydiagramcnt}
+
+% Numeração independente de capítulos
+\counterwithout{directorydiagram}{chapter}
